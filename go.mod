@@ -1,4 +1,4 @@
-module github.com/kubernetes/kompose
+module github.com/meshery/kompose
 
 go 1.13
 
@@ -23,12 +23,10 @@ require (
 	github.com/docker/libcompose v0.4.0
 	github.com/fatih/structs v1.1.0
 	github.com/fsouza/go-dockerclient v1.6.5
-	github.com/google/go-cmp v0.4.0
+	github.com/google/go-cmp v0.5.5
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
-	github.com/imdario/mergo v0.3.10 // indirect
 	github.com/joho/godotenv v1.3.0
-	github.com/moby/sys/mount v0.1.1 // indirect
-	github.com/moby/term v0.0.0-20200915141129-7f0af18e79f2 // indirect
+	github.com/kubernetes/kompose v1.26.1
 	github.com/novln/docker-parser v1.0.0
 	github.com/openshift/api v0.0.0-20200803131051-87466835fcc0
 	github.com/pkg/errors v0.9.1
@@ -36,10 +34,9 @@ require (
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.7.1
-	golang.org/x/tools v0.1.1
-	gopkg.in/yaml.v2 v2.3.0
-	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
-	gotest.tools/v3 v3.0.3 // indirect
-	k8s.io/api v0.19.0-rc.2
-	k8s.io/apimachinery v0.19.0-rc.2
+	golang.org/x/tools v0.1.5
+	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	k8s.io/api v0.23.5
+	k8s.io/apimachinery v0.23.5
 )
