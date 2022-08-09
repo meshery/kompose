@@ -54,7 +54,7 @@ const (
 var inputFormat = "compose"
 
 // ValidateFlags validates all command line flags
-func ValidateFlags(args []string, cmd *cobra.Command, opt *kobject.ConvertOptions) {
+func ValidateFlags(args []string, cmd *cobra.Command, opt *kobject.ConvertOptions) error {
 	if opt.OutFile == "-" {
 		opt.ToStdout = true
 		opt.OutFile = ""
@@ -83,54 +83,54 @@ func ValidateFlags(args []string, cmd *cobra.Command, opt *kobject.ConvertOption
 	switch {
 	case provider == ProviderOpenshift:
 		if chart {
-			log.Fatalf("--chart, -c is a Kubernetes only flag")
+			return fmt.Errorf("--chart, -c is a Kubernetes only flag")
 		}
 		if daemonSet {
-			log.Fatalf("--daemon-set is a Kubernetes only flag")
+			return fmt.Errorf("--daemon-set is a Kubernetes only flag")
 		}
 		if replicationController {
-			log.Fatalf("--replication-controller is a Kubernetes only flag")
+			return fmt.Errorf("--replication-controller is a Kubernetes only flag")
 		}
 		if deployment {
-			log.Fatalf("--deployment, -d is a Kubernetes only flag")
+			return fmt.Errorf("--deployment, -d is a Kubernetes only flag")
 		}
 		if controller == "daemonset" || controller == "replicationcontroller" || controller == "deployment" {
-			log.Fatalf("--controller= daemonset, replicationcontroller or deployment is a Kubernetes only flag")
+			return fmt.Errorf("--controller= daemonset, replicationcontroller or deployment is a Kubernetes only flag")
 		}
 	case provider == ProviderKubernetes:
 		if deploymentConfig {
-			log.Fatalf("--deployment-config is an OpenShift only flag")
+			return fmt.Errorf("--deployment-config is an OpenShift only flag")
 		}
 		if buildRepo {
-			log.Fatalf("--build-repo is an Openshift only flag")
+			return fmt.Errorf("--build-repo is an Openshift only flag")
 		}
 		if buildBranch {
-			log.Fatalf("--build-branch is an Openshift only flag")
+			return fmt.Errorf("--build-branch is an Openshift only flag")
 		}
 		if controller == "deploymentconfig" {
-			log.Fatalf("--controller=deploymentConfig is an OpenShift only flag")
+			return fmt.Errorf("--controller=deploymentConfig is an OpenShift only flag")
 		}
 	}
 
 	// Standard checks regardless of provider
 	if len(opt.OutFile) != 0 && opt.ToStdout {
-		log.Fatalf("Error: --out and --stdout can't be set at the same time")
+		return fmt.Errorf("Error: --out and --stdout can't be set at the same time")
 	}
 
 	if opt.CreateChart && opt.ToStdout {
-		log.Fatalf("Error: chart cannot be generated when --stdout is specified")
+		return fmt.Errorf("Error: chart cannot be generated when --stdout is specified")
 	}
 
 	if opt.Replicas < 0 {
-		log.Fatalf("Error: --replicas cannot be negative")
+		return fmt.Errorf("Error: --replicas cannot be negative")
 	}
 
 	if len(args) != 0 {
-		log.Fatal("Unknown Argument(s): ", strings.Join(args, ","))
+		return fmt.Errorf("Unknown Argument(s): %s", strings.Join(args, ","))
 	}
 
 	if opt.GenerateJSON && opt.GenerateYaml {
-		log.Fatalf("YAML and JSON format cannot be provided at the same time")
+		return fmt.Errorf("YAML and JSON format cannot be provided at the same time")
 	}
 
 	if _, ok := kubernetes.ValidVolumeSet[opt.Volumes]; !ok {
@@ -138,12 +138,13 @@ func ValidateFlags(args []string, cmd *cobra.Command, opt *kobject.ConvertOption
 		for validVolumeType := range kubernetes.ValidVolumeSet {
 			validVolumesTypes = append(validVolumesTypes, fmt.Sprintf("'%s'", validVolumeType))
 		}
-		log.Fatal("Unknown Volume type: ", opt.Volumes, ", possible values are: ", strings.Join(validVolumesTypes, " "))
+		return fmt.Errorf("Unknown Volume type: %s %s %s", opt.Volumes, ", possible values are: ", strings.Join(validVolumesTypes, " "))
 	}
+	return nil
 }
 
 // ValidateComposeFile validates the compose file provided for conversion
-func ValidateComposeFile(opt *kobject.ConvertOptions) {
+func ValidateComposeFile(opt *kobject.ConvertOptions) error {
 	if len(opt.InputFiles) == 0 {
 		for _, name := range DefaultComposeFiles {
 			_, err := os.Stat(name)
@@ -151,15 +152,15 @@ func ValidateComposeFile(opt *kobject.ConvertOptions) {
 				log.Debugf("'%s' not found: %v", name, err)
 			} else {
 				opt.InputFiles = []string{name}
-				return
 			}
 		}
 
-		log.Fatal("No 'docker-compose' file found")
+		return fmt.Errorf("No 'docker-compose' file found")
 	}
+	return nil
 }
 
-func validateControllers(opt *kobject.ConvertOptions) {
+func validateControllers(opt *kobject.ConvertOptions) error {
 	singleOutput := len(opt.OutFile) != 0 || opt.OutFile == "-" || opt.ToStdout
 	if opt.Provider == ProviderKubernetes {
 		// create deployment by default if no controller has been set
@@ -178,7 +179,7 @@ func validateControllers(opt *kobject.ConvertOptions) {
 				count++
 			}
 			if count > 1 {
-				log.Fatalf("Error: only one kind of Kubernetes resource can be generated when --out or --stdout is specified")
+				return fmt.Errorf("Error: only one kind of Kubernetes resource can be generated when --out or --stdout is specified")
 			}
 		}
 	} else if opt.Provider == ProviderOpenshift {
@@ -195,20 +196,23 @@ func validateControllers(opt *kobject.ConvertOptions) {
 			// if opt.foo {count++}
 
 			if count > 1 {
-				log.Fatalf("Error: only one kind of OpenShift resource can be generated when --out or --stdout is specified")
+				return fmt.Errorf("Error: only one kind of OpenShift resource can be generated when --out or --stdout is specified")
 			}
 		}
 	}
+	return nil
 }
 
 // Convert transforms docker compose or dab file to k8s objects
-func Convert(opt kobject.ConvertOptions) {
-	validateControllers(&opt)
-
+func Convert(opt kobject.ConvertOptions) error {
+	err := validateControllers(&opt)
+	if err != nil {
+		return err
+	}
 	// loader parses input from file into komposeObject.
 	l, err := loader.GetLoader(inputFormat)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	komposeObject := kobject.KomposeObject{
@@ -216,7 +220,7 @@ func Convert(opt kobject.ConvertOptions) {
 	}
 	komposeObject, err = l.LoadFile(opt.InputFiles)
 	if err != nil {
-		log.Fatalf(err.Error())
+		return err
 	}
 
 	// Get a transformer that maps komposeObject to provider's primitives
@@ -226,14 +230,15 @@ func Convert(opt kobject.ConvertOptions) {
 	objects, err := t.Transform(komposeObject, opt)
 
 	if err != nil {
-		log.Fatalf(err.Error())
+		return err
 	}
 
 	// Print output
 	err = kubernetes.PrintList(objects, opt)
 	if err != nil {
-		log.Fatalf(err.Error())
+		return err
 	}
+	return nil
 }
 
 // Convenience method to return the appropriate Transformer based on
