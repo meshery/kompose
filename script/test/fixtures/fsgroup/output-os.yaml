@@ -1,33 +1,17 @@
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  creationTimestamp: null
-  labels:
-    io.kompose.service: db
-  name: db
-spec:
-  ports:
-    - name: "80"
-      port: 80
-      targetPort: 80
-  selector:
-    io.kompose.service: db
-status:
-  loadBalancer: {}
-
----
 apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
+  annotations:
+    kompose.security-context.fsgroup: "1001"
   creationTimestamp: null
   labels:
-    io.kompose.service: db
-  name: db
+    io.kompose.service: pgadmin
+  name: pgadmin
 spec:
   replicas: 1
   selector:
-    io.kompose.service: db
+    io.kompose.service: pgadmin
   strategy:
     resources: {}
     type: Recreate
@@ -35,34 +19,38 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
-        io.kompose.network/windows-default: "true"
-        io.kompose.service: db
+        io.kompose.network/fsgroup-default: "true"
+        io.kompose.service: pgadmin
     spec:
       containers:
-        - image: ' '
-          name: db
-          ports:
-            - containerPort: 80
-              protocol: TCP
+        - env:
+            - name: PGADMIN_DEFAULT_EMAIL
+              value: dumb_pgadmin_user@email.com
+            - name: PGADMIN_DEFAULT_PASSWORD
+              value: pgadmin_password
+          image: ' '
+          name: pgadmin
           resources: {}
           volumeMounts:
-            - mountPath: D:\config
-              name: db-claim0
+            - mountPath: /var/lib/pgadmin
+              name: pgadmin-data
       restartPolicy: Always
+      securityContext:
+        fsGroup: 1001
       volumes:
-        - name: db-claim0
+        - name: pgadmin-data
           persistentVolumeClaim:
-            claimName: db-claim0
+            claimName: pgadmin-data
   test: false
   triggers:
     - type: ConfigChange
     - imageChangeParams:
         automatic: true
         containerNames:
-          - db
+          - pgadmin
         from:
           kind: ImageStreamTag
-          name: db:latest
+          name: pgadmin:latest
       type: ImageChange
 status:
   availableReplicas: 0
@@ -78,8 +66,8 @@ kind: ImageStream
 metadata:
   creationTimestamp: null
   labels:
-    io.kompose.service: db
-  name: db
+    io.kompose.service: pgadmin
+  name: pgadmin
 spec:
   lookupPolicy:
     local: false
@@ -87,7 +75,7 @@ spec:
     - annotations: null
       from:
         kind: DockerImage
-        name: nginx:latest
+        name: dpage/pgadmin4
       generation: null
       importPolicy: {}
       name: latest
@@ -102,8 +90,8 @@ kind: PersistentVolumeClaim
 metadata:
   creationTimestamp: null
   labels:
-    io.kompose.service: db-claim0
-  name: db-claim0
+    io.kompose.service: pgadmin-data
+  name: pgadmin-data
 spec:
   accessModes:
     - ReadWriteOnce
@@ -111,4 +99,3 @@ spec:
     requests:
       storage: 100Mi
 status: {}
-
