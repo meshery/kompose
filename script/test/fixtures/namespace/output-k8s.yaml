@@ -6,6 +6,7 @@ metadata:
   labels:
     io.kompose.service: web
   name: web
+  namespace: web
 spec:
   ports:
     - name: "80"
@@ -17,6 +18,16 @@ status:
   loadBalancer: {}
 
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: null
+  name: web
+  namespace: web
+spec: {}
+status: {}
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,6 +35,7 @@ metadata:
   labels:
     io.kompose.service: web
   name: web
+  namespace: web
 spec:
   replicas: 1
   selector:
@@ -34,11 +46,11 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
-        io.kompose.network/compose-file-support-default: "true"
+        io.kompose.network/namespace-default: "true"
         io.kompose.service: web
     spec:
       containers:
-        - image: nginx:latest
+        - image: nginx
           name: web
           ports:
             - containerPort: 80

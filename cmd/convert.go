@@ -47,12 +47,16 @@ var (
 	ConvertReplicas              int
 	ConvertController            string
 	ConvertPushImage             bool
+	ConvertNamespace             string
 	ConvertPushImageRegistry     string
 	ConvertOpt                   kobject.ConvertOptions
 	ConvertYAMLIndent            int
+	GenerateNetworkPolicies      bool
 
 	UpBuild string
 
+	BuildCommand string
+	PushCommand  string
 	// WithKomposeAnnotation decides if we will add metadata about this convert to resource's annotation.
 	// default is true.
 	WithKomposeAnnotation bool
@@ -116,6 +120,10 @@ var convertCmd = &cobra.Command{
 			ServiceGroupMode:            ServiceGroupMode,
 			ServiceGroupName:            ServiceGroupName,
 			SecretsAsFiles:              SecretsAsFiles,
+			GenerateNetworkPolicies:     GenerateNetworkPolicies,
+			BuildCommand:                BuildCommand,
+			PushCommand:                 PushCommand,
+			Namespace:                   ConvertNamespace,
 		}
 
 		if ServiceGroupMode == "" && MultipleContainerMode {
@@ -168,6 +176,8 @@ func init() {
 	// Standard between the two
 	convertCmd.Flags().StringVar(&ConvertBuild, "build", "none", `Set the type of build ("local"|"build-config"(OpenShift only)|"none")`)
 	convertCmd.Flags().BoolVar(&ConvertPushImage, "push-image", false, "If we should push the docker image we built")
+	convertCmd.Flags().StringVar(&BuildCommand, "build-command", "", `Set the command used to build the container image. override the docker build command.Should be used in conjuction with --push-command flag.`)
+	convertCmd.Flags().StringVar(&PushCommand, "push-command", "", `Set the command used to push the container image. override the docker push command. Should be used in conjuction with --build-command flag.`)
 	convertCmd.Flags().StringVar(&ConvertPushImageRegistry, "push-image-registry", "", "Specify registry for pushing image, which will override registry from image name.")
 	convertCmd.Flags().BoolVarP(&ConvertYaml, "yaml", "y", false, "Generate resource files into YAML format")
 	convertCmd.Flags().MarkDeprecated("yaml", "YAML is the default format now.")
@@ -178,6 +188,8 @@ func init() {
 	convertCmd.Flags().IntVar(&ConvertReplicas, "replicas", 1, "Specify the number of replicas in the generated resource spec")
 	convertCmd.Flags().StringVar(&ConvertVolumes, "volumes", "persistentVolumeClaim", `Volumes to be generated ("persistentVolumeClaim"|"emptyDir"|"hostPath" | "configMap")`)
 	convertCmd.Flags().StringVar(&ConvertPVCRequestSize, "pvc-request-size", "", `Specify the size of pvc storage requests in the generated resource spec`)
+	convertCmd.Flags().StringVarP(&ConvertNamespace, "namespace", "n", "", `Specify the namespace of the generated resources`)
+	convertCmd.Flags().BoolVar(&GenerateNetworkPolicies, "generate-network-policies", false, "Specify whether to generate network policies or not.")
 
 	convertCmd.Flags().BoolVar(&WithKomposeAnnotation, "with-kompose-annotation", true, "Add kompose annotations to generated resource")
 

@@ -22,10 +22,10 @@ Kompose is released via GitHub, you can see all current releases on the [GitHub 
 
 ```sh
 # Linux
-curl -L https://github.com/kubernetes/kompose/releases/download/v1.28.0/kompose-linux-amd64 -o kompose
+curl -L https://github.com/kubernetes/kompose/releases/download/v1.30.0/kompose-linux-amd64 -o kompose
 
 # macOS
-curl -L https://github.com/kubernetes/kompose/releases/download/v1.28.0/kompose-darwin-amd64 -o kompose
+curl -L https://github.com/kubernetes/kompose/releases/download/v1.30.0/kompose-darwin-amd64 -o kompose
 
 chmod +x kompose
 sudo mv ./kompose /usr/local/bin/kompose
@@ -33,7 +33,7 @@ sudo mv ./kompose /usr/local/bin/kompose
 
 **Windows:**
 
-Download from [GitHub](https://github.com/kubernetes/kompose/releases/download/v1.28.0/kompose-windows-amd64.exe) and add the binary to your PATH.
+Download from [GitHub](https://github.com/kubernetes/kompose/releases/download/v1.30.0/kompose-windows-amd64.exe) and add the binary to your PATH.
 
 ## Go
 
@@ -76,6 +76,12 @@ Kompose can be installed via [Chocolatey](https://chocolatey.org/packages/kubern
 
 ```console
 choco install kubernetes-kompose
+```
+
+or using winget
+
+```console
+winget install Kubernetes.kompose
 ```
 
 ## Docker

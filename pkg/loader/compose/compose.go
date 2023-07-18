@@ -156,7 +156,7 @@ func (c *Compose) LoadFile(files []string) (kobject.KomposeObject, error) {
 		return kobject.KomposeObject{}, err
 	}
 
-	projectOptions, err := cli.NewProjectOptions(files, cli.WithOsEnv, cli.WithWorkingDirectory(workingDir), cli.WithInterpolation(false))
+	projectOptions, err := cli.NewProjectOptions(files, cli.WithOsEnv, cli.WithWorkingDirectory(workingDir), cli.WithInterpolation(true))
 	if err != nil {
 		return kobject.KomposeObject{}, errors.Wrap(err, "Unable to create compose options")
 	}
@@ -462,6 +462,7 @@ func dockerComposeToKomposeMapping(composeObject *types.Project) (kobject.Kompos
 		serviceConfig.Expose = composeServiceConfig.Expose
 		serviceConfig.Privileged = composeServiceConfig.Privileged
 		serviceConfig.User = composeServiceConfig.User
+		serviceConfig.ReadOnly = composeServiceConfig.ReadOnly
 		serviceConfig.Stdin = composeServiceConfig.StdinOpen
 		serviceConfig.Tty = composeServiceConfig.Tty
 		serviceConfig.TmpFs = composeServiceConfig.Tmpfs
@@ -708,7 +709,7 @@ func parseKomposeLabels(labels map[string]string, serviceConfig *kobject.Service
 		case LabelSecurityContextFsGroup:
 			serviceConfig.FsGroup = cast.ToInt64(value)
 		case LabelServiceExpose:
-			serviceConfig.ExposeService = strings.Trim(strings.ToLower(value), " ,")
+			serviceConfig.ExposeService = strings.Trim(value, " ,")
 		case LabelNodePortPort:
 			serviceConfig.NodePortPort = cast.ToInt32(value)
 		case LabelServiceExposeTLSSecret:
@@ -719,6 +720,8 @@ func parseKomposeLabels(labels map[string]string, serviceConfig *kobject.Service
 			serviceConfig.ImagePullSecret = value
 		case LabelImagePullPolicy:
 			serviceConfig.ImagePullPolicy = value
+		case LabelContainerVolumeSubpath:
+			serviceConfig.VolumeMountSubPath = value
 		default:
 			serviceConfig.Labels[key] = value
 		}

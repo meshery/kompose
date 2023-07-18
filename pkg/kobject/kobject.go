@@ -38,6 +38,9 @@ type KomposeObject struct {
 	LoadedFrom string
 
 	Secrets types.Secrets
+
+	// Namespace is the namespace where all the generated objects would be assigned to
+	Namespace string
 }
 
 // ConvertOptions holds all options that controls transformation process
@@ -73,16 +76,20 @@ type ConvertOptions struct {
 	IsDeploymentConfigFlag      bool
 	IsNamespaceFlag             bool
 
+	BuildCommand string
+	PushCommand  string
+
 	Server string
 
 	YAMLIndent int
 
 	WithKomposeAnnotation bool
 
-	MultipleContainerMode bool
-	ServiceGroupMode      string
-	ServiceGroupName      string
-	SecretsAsFiles        bool
+	MultipleContainerMode   bool
+	ServiceGroupMode        string
+	ServiceGroupName        string
+	SecretsAsFiles          bool
+	GenerateNetworkPolicies bool
 }
 
 // IsPodController indicate if the user want to use a controller
@@ -106,6 +113,7 @@ type ServiceConfig struct {
 	WorkingDir                    string             `compose:""`
 	DomainName                    string             `compose:"domainname"`
 	HostName                      string             `compose:"hostname"`
+	ReadOnly                      bool               `compose:"read_only"`
 	Args                          []string           `compose:"args"`
 	VolList                       []string           `compose:"volumes"`
 	Network                       []string           `compose:"network"`
@@ -142,6 +150,7 @@ type ServiceConfig struct {
 	MemLimit                      types.UnitBytes    `compose:"mem_limit"`
 	MemReservation                types.UnitBytes    `compose:""`
 	DeployMode                    string             `compose:""`
+	VolumeMountSubPath            string             `compose:"kompose.volume.subpath"`
 	// DeployLabels mapping to kubernetes labels
 	DeployLabels       map[string]string  `compose:""`
 	DeployUpdateConfig types.UpdateConfig `compose:""`

@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -33,6 +34,7 @@ import (
 	"github.com/kubernetes/kompose/pkg/kobject"
 	"github.com/kubernetes/kompose/pkg/loader/compose"
 	"github.com/kubernetes/kompose/pkg/transformer"
+	"github.com/mattn/go-shellwords"
 	deployapi "github.com/openshift/api/apps/v1"
 	buildapi "github.com/openshift/api/build/v1"
 	"github.com/pkg/errors"
@@ -887,6 +889,7 @@ func (k *Kubernetes) ConfigVolumes(name string, service kobject.ServiceConfig) (
 	var PVCs []*api.PersistentVolumeClaim
 	var cms []*api.ConfigMap
 	var volumeName string
+	var subpathName string
 
 	// Set a var based on if the user wants to use empty volumes
 	// as opposed to persistent volumes and volume claims
@@ -895,6 +898,10 @@ func (k *Kubernetes) ConfigVolumes(name string, service kobject.ServiceConfig) (
 	useConfigMap := k.Opt.Volumes == "configMap"
 	if k.Opt.Volumes == "emptyDir" {
 		useEmptyVolumes = true
+	}
+
+	if subpath, ok := service.Labels["kompose.volume.subpath"]; ok {
+		subpathName = subpath
 	}
 
 	// Override volume type if specified in service labels.
@@ -992,6 +999,9 @@ func (k *Kubernetes) ConfigVolumes(name string, service kobject.ServiceConfig) (
 
 				PVCs = append(PVCs, createdPVC)
 			}
+		}
+		if subpathName != "" {
+			volMount.SubPath = subpathName
 		}
 		volumeMounts = append(volumeMounts, volMount)
 
@@ -1325,6 +1335,27 @@ func buildServiceImage(opt kobject.ConvertOptions, service kobject.ServiceConfig
 	// Check to see if there is an InputFile (required!) before we build the container
 	// Check that there's actually a Build key
 	// Lastly, we must have an Image name to continue
+
+	// If the user provided a custom build it will override the docker one.
+	if opt.BuildCommand != "" && opt.PushCommand != "" {
+		p := shellwords.NewParser()
+		p.ParseEnv = true
+
+		buildArgs, _ := p.Parse(opt.BuildCommand)
+		buildCommand := exec.Command(buildArgs[0], buildArgs[1:]...)
+		err := buildCommand.Run()
+		if err != nil {
+			return errors.Wrap(err, "error while trying to build a custom container image")
+		}
+
+		pushArgs, _ := p.Parse(opt.PushCommand)
+		pushCommand := exec.Command(pushArgs[0], pushArgs[1:]...)
+		err = pushCommand.Run()
+		if err != nil {
+			return errors.Wrap(err, "error while trying to push a custom container image")
+		}
+		return nil
+	}
 	if opt.Build == "local" && opt.InputFiles != nil && service.Build != "" {
 		// If there's no "image" key, use the name of the container that's built
 		if service.Image == "" {
@@ -1416,6 +1447,12 @@ func (k *Kubernetes) Transform(komposeObject kobject.KomposeObject, opt kobject.
 			allobjects = append(allobjects, item)
 		}
 	}
+
+	if komposeObject.Namespace != "" {
+		ns := transformer.CreateNamespace(komposeObject.Namespace)
+		allobjects = append(allobjects, ns)
+	}
+
 	if opt.ServiceGroupMode != "" {
 		log.Debugf("Service group mode is: %s", opt.ServiceGroupMode)
 		komposeObjectToServiceConfigGroupMapping := KomposeObjectToServiceConfigGroupMapping(&komposeObject, opt)
@@ -1511,8 +1548,10 @@ func (k *Kubernetes) Transform(komposeObject kobject.KomposeObject, opt kobject.
 					return nil, errors.Wrap(err, "Error transforming Kubernetes objects")
 				}
 
-				if err = k.configNetworkPolicyForService(service, service.Name, &objects); err != nil {
-					return nil, err
+				if opt.GenerateNetworkPolicies {
+					if err = k.configNetworkPolicyForService(service, service.Name, &objects); err != nil {
+						return nil, err
+					}
 				}
 			}
 
@@ -1552,8 +1591,10 @@ func (k *Kubernetes) Transform(komposeObject kobject.KomposeObject, opt kobject.
 		if err != nil {
 			return nil, errors.Wrap(err, "Error transforming Kubernetes objects")
 		}
-		if err := k.configNetworkPolicyForService(service, name, &objects); err != nil {
-			return nil, err
+		if opt.GenerateNetworkPolicies {
+			if err := k.configNetworkPolicyForService(service, name, &objects); err != nil {
+				return nil, err
+			}
 		}
 		allobjects = append(allobjects, objects...)
 	}
@@ -1561,6 +1602,7 @@ func (k *Kubernetes) Transform(komposeObject kobject.KomposeObject, opt kobject.
 	// sort all object so Services are first
 	k.SortServicesFirst(&allobjects)
 	k.RemoveDupObjects(&allobjects)
+	transformer.AssignNamespaceToObjects(&allobjects, komposeObject.Namespace)
 	// k.FixWorkloadVersion(&allobjects)
 	return allobjects, nil
 }
